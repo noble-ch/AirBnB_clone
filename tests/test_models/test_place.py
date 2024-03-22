@@ -1,112 +1,158 @@
 #!/usr/bin/python3
+"""Test User Class - Comproving expectect outputs and documentation.
+"""
 
-"""
-This file defines  the BaseModel class which will
-serve as the base of  model.
-"""
 from datetime import datetime
-from uuid import uuid4
 import models
+import pep8
+import inspect
+import unittest
+from unittest import mock
+import time
+
+Place = models.place.Place
+mod_doc = models.place.__doc__
 
 
-class BaseModel:
-    """Base class for all of classes"""
-
-    def __init__(self, *args, **kwargs):
-        """ serialize and deserialize a class """
-
-        if kwargs == {}:
-            self.id = str(uuid4())
-            self.created_at = datetime.utcnow()
-            self.updated_at = datetime.utcnow()
-            models.storage.new(self)
-            return
-
-        """using Key words"""
-        if 'id' not in kwargs:
-            kwargs['id'] = str(uuid4())
-        self.id = kwargs['id']
-
-        for Key, val in kwargs.items():
-            if Key == "__class_":
-                continue
-        if "created_at" in kwargs:
-            self.created_at = datetime.strptime(
-                    kwargs['created_at'],
-                    '%Y-%m-%dT%H:%M:%S.%f')
-        if "updated_at" in kwargs:
-            self.updated_at = datetime.strptime(
-                    kwargs['updated_at'],
-                    '%Y-%m-%dT%H:%M:%S.%f')
-
-    def __str__(self):
-        """overide string representation of self"""
-        formated_str = "[{}] ({}) {}"
-        return formated_str.format(
-                type(self).__name__,
-                self.id,
-                self.__dict__)
-
-    def save(self):
-        """updates the updated variable"""
-
-        self.updated_at = datetime.utcnow()
-        models.storage.save()
-
-    def to_dict(self):
-        """Returns a dictionary representation of self"""
-
-        temp = {**self.__dict__}
-        temp['__class__'] = type(self).__name__
-        temp['created_at'] = self.created_at.strftime('%Y-%m-%dT%H:%M:%S.%f')
-        temp['updated_at'] = self.updated_at.strftime('%Y-%m-%dT%H:%M:%S.%f')
-        return temp
-
+class TestDocs(unittest.TestCase):
+    """Test documentation and style"""
     @classmethod
-    def all(cls):
-        """Retrieve all current instances of cls"""
-        return models.storage.find_all(cls.__name__)
+    def setUpClass(self):
+        """Setup for dosctring"""
+        user_i = inspect.getmembers(Place, inspect.isfunction)
 
-    @classmethod
-    def count(cls):
-        """Get the number of all current instances of cls"""
-        return len(models.storage.find_all(cls.__name__))
+    def testing_pep8(self):
+        """Testing that models_user.py passes pep8 """
 
-    @classmethod
-    def create(cls, *args, **kwargs):
-        """Creates an Instance"""
-        new = cls(*args, **kwargs)
-        return new.id
+    def test_pep8_conformance_user(self):
+        """testing pep8 in place.py"""
+        pep8s = pep8.StyleGuide(quiet=True)
+        result = pep8s.check_files(['models/place.py'])
+        self.assertEqual(result.total_errors, 0,
+                         "Found code style errors (and warnings).")
 
-    @classmethod
-    def show(cls, instance_id):
-        """Retrieve an instance"""
-        return models.storage.find_by_id(
-            cls.__name__,
-            instance_id
-        )
+    def test_module_docstring(self):
+        """Test for the existence of module docstring"""
+        self.assertIsNot(mod_doc, None,
+                         "base_model.py needs a docstring")
+        self.assertTrue(len(mod_doc) > 1,
+                        "base_model.py needs a docstring")
 
-    @classmethod
-    def destroy(cls, instance_id):
-        """Deletes an instance"""
-        return models.storage.delete_by_id(
-            cls.__name__,
-            instance_id
-        )
+    def test_dosctring(self):
+        """Testing documentation"""
+        self.assertIsNot(mod_doc, None,
+                         "base_model.py needs a doctring")
+        self.assertTrue(len(mod_doc) > 1,
+                        "base_model.py needs a docstring")
 
-    @classmethod
-    def update(cls, instance_id, *args):
-        """Updates an instance"""
-        if not len(args):
-            print("** attribute name missing **")
-            return
-        if len(args) == 1 and isinstance(args[0], dict):
-            args = args[0].items()
-        else:
-            args = [args[:2]]
-        for arg in args:
-            models.storage.update_one(
-                cls.__name__,
-                instance_id,
-                *arg
-            )
+
+class TestBaseModel(unittest.TestCase):
+    """testing BaseModel Class"""
+    @mock.patch('models.place')
+    def test_instances(self, mock_storage):
+        """Testing that object is correctly created"""
+        instance = Place()
+        self.assertIs(type(instance), Place)
+        instance.name = "Holbies foravaaaa"
+        instance.description = "really nice"
+        instance.number_rooms = 2
+        instance.number_bathrooms = 3
+        instance.max_guest = 4
+        instance.price_by_night = 30
+        instance.latitude = 2.5
+        instance.longitude = 5.4
+        instance.longitude = 5.4
+        instance.amenity_ids = ["11", "22"]
+
+        expectec_attrs_types = {
+            "id": str,
+            "created_at": datetime,
+            "updated_at": datetime,
+            "name": str,
+            "description": str,
+            "number_rooms": int,
+            "number_bathrooms": int,
+            "max_guest": int,
+            "price_by_night": int,
+            "latitude": float,
+            "longitude": float,
+            "amenity_ids": list
+        }
+
+        # testing types and attr names
+        for attr, types in expectec_attrs_types.items():
+            with self.subTest(attr=attr, typ=types):
+                self.assertIn(attr, instance.__dict__)
+                self.assertIs(type(instance.__dict__[attr]), types)
+        self.assertEqual(instance.name, "Holbies foravaaaa")
+        self.assertEqual(instance.description, "really nice")
+        self.assertEqual(instance.number_rooms, 2)
+        self.assertEqual(instance.number_bathrooms, 3)
+        self.assertEqual(instance.max_guest, 4)
+        self.assertEqual(instance.price_by_night, 30)
+        self.assertEqual(instance.latitude, 2.5)
+        self.assertEqual(instance.longitude, 5.4)
+        self.assertEqual(instance.amenity_ids, ['11', '22'])
+
+    def test_datetime(self):
+        """testing correct datetime assignation
+        correct assignation of created_at and updated_at"""
+        created_at = datetime.now()
+        instance1 = Place()
+        updated_at = datetime.now()
+        self.assertEqual(created_at <= instance1.created_at
+                         <= updated_at, True)
+        time.sleep(1)
+        created_at = datetime.now()
+        instance2 = Place()
+        updated_at = datetime.now()
+        self.assertTrue(created_at <= instance2.created_at <= updated_at, True)
+        self.assertEqual(instance1.created_at, instance1.created_at)
+        self.assertEqual(instance2.updated_at, instance2.updated_at)
+        self.assertNotEqual(instance1.created_at, instance2.created_at)
+        self.assertNotEqual(instance1.updated_at, instance2.updated_at)
+
+    def test_uuid(self):
+        """testing uuid"""
+        instance1 = Place()
+        instance2 = Place()
+        for instance in [instance1, instance2]:
+            tuuid = instance.id
+            with self.subTest(uuid=tuuid):
+                self.assertIs(type(tuuid), str)
+
+    def test_dictionary(self):
+        """testing to_dict correct funtionality"""
+        """Testing that object is correctly created"""
+        instance3 = Place()
+        self.assertIs(type(instance3), Place)
+        instance3.name = "Holbies foravaaaa"
+        new_inst = instance3.to_dict()
+        expectec_attrs = ["id",
+                          "created_at",
+                          "updated_at",
+                          "name",
+                          "__class__"]
+        self.assertCountEqual(new_inst.keys(), expectec_attrs)
+        self.assertEqual(new_inst['__class__'], 'Place')
+        self.assertEqual(new_inst['name'], 'Holbies foravaaaa')
+
+    def test_str_method(self):
+        """testing str method, checking output"""
+        instance4 = Place()
+        strr = "[Place] ({}) {}".format(instance4.id, instance4.__dict__)
+        self.assertEqual(strr, str(instance4))
+
+    @mock.patch('models.storage')
+    def test_save_method(self, mock_storage):
+        """test save method and if it updates
+        "updated_at" calling storage.save"""
+        instance4 = Place()
+        created_at = instance4.created_at
+        updated_at = instance4.updated_at
+        instance4.save()
+        new_created_at = instance4.created_at
+        new_updated_at = instance4.updated_at
+        self.assertNotEqual(updated_at, new_updated_at)
+        self.assertEqual(created_at, new_created_at)
+        self.assertTrue(mock_storage.save.called)
